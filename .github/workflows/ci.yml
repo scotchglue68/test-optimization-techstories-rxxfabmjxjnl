@@ -66,7 +66,10 @@ jobs:
           DATABASE_URL: ${{ env.DATABASE_URL }}
           NEXT_PUBLIC_QUOTES_API_URL: ${{ env.QUOTES_API_URL }}
           NODE_OPTIONS: -r ${{env.DD_TRACE_PACKAGE}}
-
+      - name: Run Quality Gate
+        # run it even if tests fail
+        if: always()
+        run: npx datadog-ci gate evaluate
       - name: Save npm cache
         uses: actions/cache/save@v4
         if: always()
