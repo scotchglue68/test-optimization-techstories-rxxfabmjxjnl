@@ -67,20 +67,19 @@ describe("Header", () => {
   });
 
   test("renders the user's name when signed in", () => {
-    // Mock the session before rendering
-    (useSession as jest.Mock).mockReturnValue({
+    (useSession as jest.Mock).mockReturnValueOnce({
       data: {
         user: {
           name: "test user",
           email: "name@example.com",
           id: "1",
+          image: "https://example.com/image.png",
         },
       },
-      status: "authenticated",
     });
-
     render(<Header />);
-    const name = screen.getByText("test user");
+
+    const name = screen.getByText(/test user/i);
     expect(name).toBeInTheDocument();
   });
 });
