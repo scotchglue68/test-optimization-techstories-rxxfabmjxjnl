@@ -6,7 +6,7 @@ import { PrismaClient, VotesOnPosts, Prisma } from "@prisma/client";
 
 // Flaky integration tests for Post and Comment models
 
-describe("Post and Comment Integration", () => {
+describe("Post and Comment Integration (Flaky)", () => {
   const prisma = new PrismaClient();
   const testUserEmail = "flakyuser@datadog-demo.com";
   let testUserId: string;
@@ -30,8 +30,7 @@ describe("Post and Comment Integration", () => {
   });
 
   test("can create a post", async () => {
-    const shouldTimeout = Math.random() > 0.5;
-    const createPost = prisma.post.create({
+    const post = await prisma.post.create({
       data: {
         title: "Flaky Post",
         content: "This is a flaky post.",
@@ -39,20 +38,8 @@ describe("Post and Comment Integration", () => {
         authorId: testUserId,
       },
     });
-    if (shouldTimeout) {
-      await expect(
-        Promise.race([
-          createPost,
-          new Promise((_, reject) =>
-            setTimeout(() => reject(new Error("Timeout creating post")), 80)
-          ),
-        ])
-      ).rejects.toThrow("Timeout creating post");
-    } else {
-      const post = await createPost;
-      expect(post).not.toBeNull();
-      testPostId = post.id;
-    }
+
+    expect(post).not.toBeNull();
   });
 
   test("can create a comment", async () => {
