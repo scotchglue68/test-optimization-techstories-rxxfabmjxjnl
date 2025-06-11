@@ -1,0 +1,75 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+    # run on open, and on every push
+    types: [opened, synchronize]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write # Required for cache operations
+
+env:
+  DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgres://user:password@localhost:5432/db?schema=techstories' }}
+  NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL || 'http://localhost:3000' }}
+  QUOTES_API_URL: ${{ secrets.QUOTES_API_URL || 'http://localhost:3001' }}
+  POSTGRES_PASSWORD: password
+  POSTGRES_USER: user
+  POSTGRES_DB: db
+  DD_API_KEY: ${{ secrets.DD_API_KEY }}
+  DD_APP_KEY: ${{ secrets.DD_APP_KEY }}
+  DD_INSIDE_CI: true
+  DD_HOSTNAME: ${{ github.workflow }}-${{ github.ref }}
+  DD_ENV: CI
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Restore node_modules cache
+        id: cache
+        uses: actions/cache/restore@v4
+        if: always()
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Prepare Database
+        run: npm run db-prep
+      - name: Configure Datadog Test Optimization
+        uses: datadog/test-visibility-github-action@v2
+        with:
+          languages: js
+          api_key: ${{ env.DD_API_KEY }}
+          site: datadoghq.com
+      - name: Run All Tests
+        id: run_tests
+        run: npm run test:ci
+        env:
+          NODE_ENV: test
+          NEXTAUTH_URL: ${{ env.NEXTAUTH_URL }}
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+          NEXT_PUBLIC_QUOTES_API_URL: ${{ env.QUOTES_API_URL }}
+          NODE_OPTIONS: -r ${{env.DD_TRACE_PACKAGE}}
+
+      - name: Save npm cache
+        uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('package-lock.json') }}
